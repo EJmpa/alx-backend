@@ -53,6 +53,7 @@ def get_locale() -> str:
     request, or use the forced locale.
     """
     supported_languages: List[str] = app.config['LANGUAGES']
+    
     forced_locale: str = request.args.get('locale')
 
     if forced_locale and forced_locale in supported_languages:
