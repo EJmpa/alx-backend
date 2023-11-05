@@ -60,7 +60,8 @@ def get_locale() -> str:
         return forced_locale
 
     # Locale from user settings
-    if g.user and 'locale' in g.user and g.user['locale'] in supported_languages:
+    if g.user and 'locale' in g.user and \
+            g.user['locale'] in supported_languages:
         return g.user['locale']
 
     # Locale from request header
