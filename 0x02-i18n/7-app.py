@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-6-app.py - Babel Configuration
+7-app.py - Babel Configuration
 """
 
 from pytz import timezone, exceptions as pytz_exceptions
 from flask import Flask, render_template, request, g
-from flask_babel import Babel, timezoneselector
+from flask_babel import Babel
 from typing import List
 
 app: Flask = Flask(__name__)
@@ -111,7 +111,7 @@ def index() -> str:
     """
     Renders the index.html template with translated text.
     """
-    return render_template('6-index.html')
+    return render_template('7-index.html')
 
 
 if __name__ == '__main__':
