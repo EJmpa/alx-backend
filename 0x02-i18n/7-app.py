@@ -3,8 +3,9 @@
 6-app.py - Babel Configuration
 """
 
+from pytz import timezone, exceptions as pytz_exceptions
 from flask import Flask, render_template, request, g
-from flask_babel import Babel
+from flask_babel import Babel, timezoneselector
 from typing import List
 
 app: Flask = Flask(__name__)
@@ -44,6 +45,35 @@ class Config:
 
 app.config.from_object(Config)
 babel.init_app(app)
+
+
+@babel.timezoneselector
+def get_timezone() -> str:
+    """Determine the best-matching time zone for the user."""
+    # Find the timezone parameter in URL parameters
+    timezone_param = request.args.get('timezone')
+
+    if timezone_param:
+        try:
+            # Validate that the provided timezone is a valid time zone
+            timezone(timezone_param)
+            return timezone_param
+        except pytz_exceptions.UnknownTimeZoneError:
+            pass
+
+    # Find the time zone from user settings
+    if g.user:
+        user_timezone = g.user.get('timezone')
+        if user_timezone:
+            try:
+                # Validate that the user's preferred timezone is valid
+                timezone(user_timezone)
+                return user_timezone
+            except pytz_exceptions.UnknownTimeZoneError:
+                pass
+
+    # Default to UTC if no valid timezone found
+    return Config.BABEL_DEFAULT_TIMEZONE
 
 
 @babel.localeselector
