@@ -27,9 +27,9 @@ def get_user(user_id):
 def before_request():
     user_id = request.args.get("login_as")
     if user_id:
-    g.user = get_user(int(user_id))
-else:
-    g.user = None
+        g.user = get_user(int(user_id))
+    else:
+        g.user = None
 
 
 class Config:
