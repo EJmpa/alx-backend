@@ -19,17 +19,18 @@ users = {
 }
 
 
-def get_user(user_id):
+def get_user():
+    """gets user dictionary from user table based on url param"""
+    user_id = request.args.get('login_as')
+    if user_id:
+        user_id = int(user_id)
     return users.get(user_id)
 
 
 @app.before_request
 def before_request():
-    user_id = request.args.get("login_as")
-    if user_id:
-        g.user = get_user(int(user_id))
-    else:
-        g.user = None
+    """sets user as global variable"""
+    g.user = get_user()
 
 
 class Config:
