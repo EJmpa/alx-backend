@@ -81,5 +81,5 @@ jobs.forEach((jobData, index) => {
 });
 
 // Log a message when the script completes
-console.log('Job creation script completed');
+// console.log('Job creation script completed');
 
