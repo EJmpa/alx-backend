@@ -1,85 +1,80 @@
-// Import the required modules
+// 9-stock.js
 import express from 'express';
-import kue from 'kue';
-import { promisify } from 'util';
 import redis from 'redis';
+import { promisify } from 'util';
 
-// Define an array of products
+const app = express();
+const port = 1245;
+const client = redis.createClient();
+
 const listProducts = [
-  { id: 1, name: 'Suitcase 250', price: 50, stock: 4 },
-  { id: 2, name: 'Suitcase 450', price: 100, stock: 10 },
-  { id: 3, name: 'Suitcase 650', price: 350, stock: 2 },
-  { id: 4, name: 'Suitcase 1050', price: 550, stock: 5 },
+  { itemId: 1, itemName: 'Suitcase 250', price: 50, initialAvailableQuantity: 4 },
+  { itemId: 2, itemName: 'Suitcase 450', price: 100, initialAvailableQuantity: 10 },
+  { itemId: 3, itemName: 'Suitcase 650', price: 350, initialAvailableQuantity: 2 },
+  { itemId: 4, itemName: 'Suitcase 1050', price: 550, initialAvailableQuantity: 5 },
 ];
 
-// Define a function to get a product by its ID
-const getItemById = (id) => listProducts.find((item) => item.id === id);
+const getItemById = (id) => listProducts.find((item) => item.itemId === id);
 
-// Create a Redis client and promisify the get and set methods
-const client = redis.createClient();
-const getAsync = promisify(client.get).bind(client);
-const setAsync = promisify(client.set).bind(client);
-
-// Define a function to reserve stock for a product
 const reserveStockById = async (itemId, stock) => {
-  await setAsync(`item.${itemId}`, stock);
+  const asyncSet = promisify(client.set).bind(client);
+  await asyncSet(`item.${itemId}`, stock);
 };
 
-// Define a function to get the current reserved stock for a product
 const getCurrentReservedStockById = async (itemId) => {
-  const stock = await getAsync(`item.${itemId}`);
-  return stock !== null ? stock : getItemById(itemId).stock;
+  const asyncGet = promisify(client.get).bind(client);
+  const reservedStock = await asyncGet(`item.${itemId}`);
+  return reservedStock ? parseInt(reservedStock, 10) : 0;
 };
 
-// Create an Express application
-const app = express();
-// Create a Kue queue
-const queue = kue.createQueue();
-
-// Define a route to get a list of all products
 app.get('/list_products', (req, res) => {
-  res.json(listProducts);
+  res.json(listProducts.map((item) => ({
+    itemId: item.itemId,
+    itemName: item.itemName,
+    price: item.price,
+    initialAvailableQuantity: item.initialAvailableQuantity,
+  })));
 });
 
-// Define a route to get a product by its ID
 app.get('/list_products/:itemId', async (req, res) => {
-  const itemId = parseInt(req.params.itemId);
+  const itemId = parseInt(req.params.itemId, 10);
   const item = getItemById(itemId);
 
   if (!item) {
-    return res.json({ status: 'Product not found' });
+    res.json({ status: 'Product not found' });
+    return;
+  }
+
+  const currentQuantity = await getCurrentReservedStockById(itemId);
+  res.json({
+    itemId: item.itemId,
+    itemName: item.itemName,
+    price: item.price,
+    initialAvailableQuantity: item.initialAvailableQuantity,
+    currentQuantity: currentQuantity,
+  });
+});
+
+app.get('/reserve_product/:itemId', async (req, res) => {
+  const itemId = parseInt(req.params.itemId, 10);
+  const item = getItemById(itemId);
+
+  if (!item) {
+    res.json({ status: 'Product not found' });
+    return;
   }
 
   const currentQuantity = await getCurrentReservedStockById(itemId);
 
-  res.json({
-    ...item,
-    currentQuantity,
-  });
-});
-
-// Define a route to reserve a product
-app.get('/reserve_product/:itemId', async (req, res) => {
-  const itemId = parseInt(req.params.itemId);
-  const item = getItemById(itemId);
-
-  if (!item) {
-    return res.json({ status: 'Product not found' });
-  }
-
-  let currentQuantity = await getCurrentReservedStockById(itemId);
-
   if (currentQuantity <= 0) {
-    return res.json({ status: 'Not enough stock available', itemId });
+    res.json({ status: 'Not enough stock available', itemId: item.itemId });
+    return;
   }
 
-  await reserveStockById(itemId, --currentQuantity);
-
-  res.json({ status: 'Reservation confirmed', itemId });
+  await reserveStockById(itemId, currentQuantity - 1);
+  res.json({ status: 'Reservation confirmed', itemId: item.itemId });
 });
 
-// Start the server
-app.listen(1245, () => {
-  console.log('Server running on port 1245');
+app.listen(port, () => {
+  console.log(`Server listening on port ${port}`);
 });
-
